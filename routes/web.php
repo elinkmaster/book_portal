@@ -8,10 +8,13 @@ use App\Http\Controllers\EbookController;
 use App\Http\Controllers\GeneratePdfController;
 use App\Http\Controllers\GenerateReportController;
 use App\Http\Controllers\PodTransactionController;
+use App\Http\Controllers\PodTransactionControllerBETA;
 use App\Http\Controllers\RejectedEbookTransactionController;
 use App\Http\Controllers\RejectedPodTransactionController;
+use App\Http\Controllers\RejectedPodTransactionControllerBETA;
 use App\Http\Controllers\RoyaltyController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\manualController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -49,7 +52,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/', 'dashboard')->name('dashboard');
         Route::post('/logout', 'logout')->name('logout');
     });
-
+    Route::controller(manualController::class)->group(function () {
+        Route::get('/manual', 'viewManual')->name('manual.view');
+        Route::get('/version', 'viewVersion')->name('version');
+       
+        
+    });
     Route::controller(AuthorController::class)->group(function () {
         Route::get('/authors', 'index')->name('author.index');
         Route::get('/authors/search', 'search')->name('author.search');
@@ -60,11 +68,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/authors/create', 'store')->name('author.store');
         Route::put('/authors/{author}', 'update')->name('author.update');
         Route::delete('/authors/{author}', 'delete')->name('author.delete');
+        Route::delete('/authors/clearAll', 'clear')->name('author.clear');
     });
 
     Route::controller(BookController::class)->group(function () {
         Route::get('/books', 'index')->name('book.index');
         Route::get('/books/search', 'search')->name('book.search');
+        Route::get('/books/search/author', 'searchAuthor')->name('book.getauthor');
         Route::get('/books/import', 'importPage')->name('book.import-page');
         Route::post('/books/import', 'import')->name('book.import-bulk');
         Route::get('/books/create', 'create')->name('book.create');
@@ -76,18 +86,23 @@ Route::middleware('auth')->group(function () {
     Route::controller(RoyaltyController::class)->group(function () {
         Route::get('/royalties', 'index')->name('royalty.index');
         Route::get('/royalties/author', 'search')->name('royalty.search');
+        Route::get('/royalties/sort', 'sort')->name('royalty.sort');
+        Route::get('/royalties/filter', 'yearfil')->name('royalty.filter');
+          
       
     });
     Route::controller(EbookRoyaltyController::class)->group(function () {
         Route::get('/EbookRoyalties', 'index')->name('er.index'); 
         Route::get('/EbookRoyalties/author', 'search')->name('er.search');
-      
+        Route::get('/EbookRoyalties/sort', 'sort')->name('er.sort');
+        Route::get('/EbookRoyalties/filter', 'filter')->name('er.filter'); 
     });
     
 
     Route::controller(PodTransactionController::class)->prefix('pod')->group(function () {
         Route::get('/', 'index')->name('pod.index');
         Route::get('/search', 'search')->name('pod.search');
+        Route::get('/sort', 'sort')->name('pod.sort');
         Route::get('/import', 'importPage')->name('pod.import-page');
         Route::post('/import', 'import')->name('pod.import-bulk');
         Route::get('/create', 'create')->name('pod.create');
@@ -109,6 +124,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/{ebook}', 'update')->name('ebook.update');
         Route::get('/{ebook}', 'delete')->name('ebook.delete');
         Route::get('/delete/all', 'clear')->name('ebook.clear');
+        Route::get('/filter/year', 'year')->name('ebook.year');
+        Route::get('/search/month', 'month')->name('ebook.month');
     });
 
     Route::prefix('rejecteds')->group(function () {
@@ -118,6 +135,7 @@ Route::middleware('auth')->group(function () {
             Route::put('/{rejected_pod}', 'update')->name('rejecteds-pods.update');
             Route::get('/{rejected_pod}/delete', 'delete')->name('rejecteds-pods.delete');
             Route::get('/delete', 'clear')->name('all-rejecteds-pods.clear');
+            Route::get('/search', 'filterByyear')->name('find-rejecteds-pods.filter');
         });
 
         Route::controller(RejectedEbookTransactionController::class)->prefix('ebooks')->group(function () {
@@ -126,6 +144,7 @@ Route::middleware('auth')->group(function () {
             Route::put('/{rejected_ebook}', 'update')->name('rejecteds-ebooks.update');
             Route::get('/{rejected_ebook}/delete', 'delete')->name('rejecteds-ebooks.delete');
             Route::get('/delete', 'clear')->name('all-rejecteds-ebooks.clear');
+            Route::get('/getyear', 'year')->name('all-rejecteds-ebooks.filteryear');
         });
     });
 

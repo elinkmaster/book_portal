@@ -74,6 +74,7 @@
                         <li>
                             <hr class="dropdown-divider">
                         </li>
+                        <li><a class="dropdown-item" href="{{ route('manual.view') }}">View Guide</a></li>
                         <li>
                             <form action="{{ route('logout') }}" method="post" class="my-0">
                                 @csrf

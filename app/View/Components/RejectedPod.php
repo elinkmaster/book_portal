@@ -17,7 +17,7 @@ class RejectedPod extends Component
 
     public function __construct()
     {
-        $this->count = RejectedPodTransaction::count();
+        $this->count = RejectedPodTransaction::where('quantity' ,'>' , 0)->count();
     }
 
     /**

@@ -22,7 +22,7 @@
                     </div>
                     <div class="form-group my-1">
                         <label>ISBN</label>
-                        <input type="text" class="form-control" id="pod_year" value="{{ $pod->isbn }}" disabled>
+                        <input name="isbn" type="text" class="form-control" id="pod_year" value="{{ $pod->isbn }}" disabled>
                         <input type="hidden" name='market' class="form-control" id="pod_year" value="{{ $pod->market }}" disabled>
                     </div>
 

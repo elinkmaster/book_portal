@@ -24,11 +24,18 @@
                     @csrf
                     @method('PUT')
                     <div class="form-group my-1">
-                        <label for="product_id">Product ID</label>
-                        <input type="number" name="product_id" id="product_id" class="form-control" placeholder="xxxx" value="{{old('product_id') ?? $book->product_id}}">
-                        @error('product_id')
-                            <small class="text-danger">{{$message}}</small>
-                        @enderror
+                        
+                        <input hidden type="text" name="isbn" id="product_id" class="form-control"  value="{{$book->isbn}}">
+                        
+                    </div>
+                    <div class="form-group">
+                        <label for="author">Author</label>
+                        <select name="author" class="select2 form-control" id="author">
+                            <option value="" disabled selected>{{$book->author->getFullName()}}</option>
+                            @foreach ($authors as $author)
+                                <option value="{{$author->id }}">{{$author->getFullName()}}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="form-group my-1">
                         <label for="title">Book Title</label>
@@ -46,5 +53,21 @@
         </div>
     </div>
 </div>
-
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/css/datepicker.min.css"
+        rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="https://netdna.bootstrapcdn.com/bootstrap/2.3.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/js/bootstrap-datepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#year").datepicker({
+                format: "yyyy",
+                viewMode: "years",
+                minViewMode: "years",
+                autoclose: true
+            });
+            $('.select2').select2();
+        });
+    </script>
 @endsection

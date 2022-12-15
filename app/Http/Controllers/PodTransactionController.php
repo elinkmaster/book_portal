@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Carbon\Carbon;
 use App\Helpers\MonthHelper;
 use App\Helpers\NameHelper;
 use App\Imports\PodFakesImport;
@@ -18,22 +18,82 @@ class PodTransactionController extends Controller
 {
     public function index()
     {
+        $month = MonthHelper::getMonths();
+        $year =PodTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        $authors = Author::all();
         $books = Book::all();
         return view('pod.index', [
-            'pod_transactions' => PodTransaction::orderBy('created_at', 'DESC')->paginate(10)
-        ], compact('books'));
+            'pod_transactions' => PodTransaction::where('quantity','>',0 )->orderBy('created_at', 'DESC')->paginate(10)
+        ], compact('books' ,'authors', 'month','year'));
     }
-    
+
     public function search(Request $request)
     {
+        $month = MonthHelper::getMonths();
+        $year =PodTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        $authors = Author::all();
         $books = Book::all();
-        $pod = PodTransaction::where('book_id', $request->book_id)->paginate(10);
+        $pod = PodTransaction::where('quantity','>',0 )->where('book_id', $request->book_id)->paginate(10);
+       
         if ($request->book_id == 'all') {
-            $pod = PodTransaction::orderBy('created_at', 'DESC')->paginate(10);
+            $pod = PodTransaction::where('quantity','>',0 )->orderBy('created_at', 'DESC')->paginate(10);
+        }else{
+            return view('pod.index', [
+                'pod_transactions' => $pod, 'books' => $books , 'authors' => $authors
+            ], compact('books' ,'authors','month','year'));
+        }
+       
+        if($request->author_id == 'all'){
+            $authors = Author::all();
+            $books = Book::all();
+            return view('pod.index', [
+                'pod_transactions' => PodTransaction::where('quantity','>',0 )->orderBy('created_at', 'DESC')->paginate(10)
+            ], compact('books' ,'authors','month','year'));
         }
         return view('pod.index', [
-            'pod_transactions' => $pod, 'books' => $books
-        ]);
+            'pod_transactions' => PodTransaction::where('quantity','>',0 )->where('author_id', $request->author_id)->paginate(10), 'books' => $books , 'authors' => $authors
+        ],compact('month','year'));
+
+    }
+    public function sort(Request $request){
+        $month = MonthHelper::getMonths();
+        $year =PodTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        $authors = Author::all();
+        $books = Book::all();
+        $pod = PodTransaction::where('quantity','>',0 )->where('status', $request->status)->paginate(10);
+        $podm = PodTransaction::where('quantity','>',0 )->where('month', $request->months)->paginate(10);
+        $pody = PodTransaction::where('quantity','>',0 )->where('year', $request->years)->paginate(10);
+       
+       if($request->months=='all'){
+            $podm = PodTransaction::where('quantity','>',0 )->orderBy('created_at', 'DESC')->paginate(10);
+        }else{
+            return view('pod.index', [
+                'pod_transactions' => $podm, 
+            ],compact('books' ,'authors', 'month','year'));
+        }
+        if($request->years=='all'){
+            $pody = PodTransaction::where('quantity','>',0 )->orderBy('created_at', 'DESC')->paginate(10);
+        }else{
+            return view('pod.index', [
+                'pod_transactions' => $pody, 
+            ],compact('books' ,'authors', 'month','year'));
+        }
+       
+       
+       
+       
+       
+       
+       
+        if($request->status == 'all'){
+            $pod = PodTransaction::where('quantity','>',0 )->orderBy('created_at', 'DESC')->paginate(10);
+        }
+        return view('pod.index', [
+            'pod_transactions' => $pod,
+        ],compact('books' ,'authors', 'month','year'));
+
+
+        
     }
     public function clear(){
        PodTransaction::truncate();
@@ -81,10 +141,16 @@ class PodTransactionController extends Controller
             'quantity' => 'required',
             'price' => 'required',
         ]);
+        $x = $request->format;
+        $format = strtoupper(substr($x ,-3));
+        $instanceid  = "RM".$request->year.$request->month.substr($request->isbn,-4).$format;
 
+        $getRevenue = $request->quantity * $request->price;
+        $royalty = number_format($getRevenue * 0.15 ,3);
         $pod = PodTransaction::create([
             'author_id' => $request->author,
             'book_id' => $request->book_title,
+            'instance_id'=>$instanceid,
             'year' => $request->year,
             'month' => $request->month,
             'flag' => $request->flag,
@@ -92,8 +158,9 @@ class PodTransactionController extends Controller
             'format' => $request->format,
             'quantity' => $request->quantity,
             'price' => $request->price,
-            'royalty' => number_format($request->quantity * $request->price * 0.15, 2)
+            'royalty' => number_format($royalty , 3)
         ]);
+
 
         return redirect(route('pod.create'))->with('success', 'Transaction successfully saved');
     }
@@ -116,6 +183,7 @@ class PodTransactionController extends Controller
     {
         $request->validate([
             'author' => 'required',
+            'isbn' => 'required',
             'book_title' => 'required',
             'year' => 'required',
             'month' => 'required',
@@ -124,10 +192,17 @@ class PodTransactionController extends Controller
             'quantity' => 'required',
             'price' => 'required',
         ]);
-
+        $x = $request->format;
+        $format = strtoupper(substr($x ,-3));
+        $year =$request->year ;
+        $month= $request->month;
+        $instanceid  = "RM".$year.$month.substr($request->isbn,-3).$format;
+      
+        $royalty = $request->quantity * $request->price * 0.15;
         $pod->update([
             'author_id' => $request->author,
             'book_id' => $request->book_title,
+            'instance_id'=>$instanceid,
             'year' => $request->year,
             'month' => $request->month,
             'flag' => $request->flag,
@@ -135,8 +210,18 @@ class PodTransactionController extends Controller
             'format' => $request->format,
             'quantity' => $request->quantity,
             'price' => $request->price,
-            'royalty' => number_format((float)($request->quantity * $request->price) * 0.15, 2)
+            'royalty' => number_format($royalty,3)
         ]);
+
+        $book = Book::where('id', $request->book_title)->first();
+       if($book){
+        $book->update([
+            'book_id' => $request->book_title,
+            'author_id' => $request->author
+
+        ]);
+       }
+
 
         return redirect(route('pod.edit', ['pod' => $pod]))->with('success', 'Transaction successfully updated');
     }

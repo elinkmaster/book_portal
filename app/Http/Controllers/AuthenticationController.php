@@ -42,6 +42,7 @@ class AuthenticationController extends Controller
             foreach($authors as $author){
                 if($request->author ==$authors->id){
                     $books = PodTransaction::where('author_id', $authors->id)->first();
+                    $salesOp = PodTransaction::where('author_id', $authors->id)->first();
                 }
             }
         }

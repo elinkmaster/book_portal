@@ -16,22 +16,75 @@ class EbookController extends Controller
 {
     public function index()
     {
+        $authors = Author::all();
+        $months = MonthHelper::getMonths();
+        $year =  EbookTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
         $books = Book::all();
         return view('ebook.index', [
             'ebook_transactions' => EbookTransaction::orderBy('created_at', 'DESC')->paginate(10)
-        ], compact('books'));
+        ], compact('books','authors','months' , 'year'));
     }
 
     public function search(Request $request)
     {
+        $months = MonthHelper::getMonths();
+        $year =  EbookTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        $authors = Author::all();
         $books = Book::all();
         $ebook = EbookTransaction::where('book_id', $request->book_id)->paginate(10);
+        $books = Book::all();
         if ($request->book_id == 'all') {
             $ebook = EbookTransaction::orderBy('created_at', 'DESC')->paginate(10);
+        }else{
+            return view('ebook.index', [
+                'ebook_transactions' => $ebook,
+            ],compact('books','authors','months' , 'year'));
+        }
+        
+        if($request->author_id == 'all'){
+       
+            return view('ebook.index', [
+                'ebook_transactions' => EbookTransaction::orderBy('created_at', 'DESC')->paginate(10)
+            ], compact('books','authors','months' , 'year'));
+        }
+        $author= Author::all();
+        return view('ebook.index', [
+            'ebook_transactions' => EbookTransaction::where('author_id', $request->author_id)->paginate(10), 
+        ], compact('books','authors','months' , 'year'));
+
+       
+    }
+    public function year(Request $request){
+        $authors = Author::all();
+        $months = MonthHelper::getMonths();
+        $year =  EbookTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        $books = Book::all();
+        if($request->years=='all'){
+            return view('ebook.index', [
+                'ebook_transactions' => EbookTransaction::orderBy('created_at', 'DESC')->paginate(10)
+            ], compact('books', 'authors','months' , 'year'));
         }
         return view('ebook.index', [
-            'ebook_transactions' => $ebook, 'books' => $books
-        ]);
+            'ebook_transactions' => EbookTransaction::where('year', $request->years)->orderBy('created_at', 'DESC')->paginate(10)
+        ], compact('books', 'authors','months' , 'year'));
+        
+         
+        
+    }
+    public function month(Request $request){
+        $authors = Author::all();
+        $months = MonthHelper::getMonths();
+        $year =  EbookTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        $books = Book::all();
+        if($request->months=='all'){
+            return view('ebook.index', [
+                'ebook_transactions' => EbookTransaction::orderBy('created_at', 'DESC')->paginate(10)
+            ], compact('books', 'authors','months' , 'year'));
+        }
+        return view('ebook.index', [
+            'ebook_transactions' => EbookTransaction::where('month', $request->months)->orderBy('created_at', 'DESC')->paginate(10)
+        ], compact('books', 'authors','months' , 'year'));
+        
     }
     public function clear(){
         EbookTransaction::truncate();
@@ -61,7 +114,8 @@ class EbookController extends Controller
             'price' => 'required',
             'proceeds' => 'required'
         ]);
-
+        //$revenue  = $request->price * $request->quantity;
+        $royalty = $request->proceeds /2 ;
         $ebook = EbookTransaction::create([
             'author_id' => $request->author,
             'book_id' => $request->book,
@@ -70,7 +124,7 @@ class EbookController extends Controller
             'quantity' => $request->quantity,
             'price' => $request->price,
             'proceeds' => $request->proceeds,
-            'royalty' => number_format($request->proceeds / 2),2
+            'royalty' => $royalty ,
         ]);
 
         return redirect(route('ebook.create'))->with('success', 'Transaction successfully saved');
@@ -81,7 +135,8 @@ class EbookController extends Controller
         $months = MonthHelper::getMonths();
         $authors = Author::all();
         $books = Book::all();
-        return view('ebook.edit', compact('ebook', 'months', 'authors', 'books'));
+        $year =EbookTransaction::select('year')->orderBy('year', 'desc')->first() ?? now()->year;
+        return view('ebook.edit', compact('ebook', 'months', 'authors', 'books' ,'year'));
     }
 
     public function update(Request $request, EbookTransaction $ebook)
@@ -95,7 +150,8 @@ class EbookController extends Controller
             'price' => 'required',
             'proceeds' => 'required'
         ]);
-
+        
+        $royalty =  $request->proceeds /2;
         $ebook->update([
             'author_id' => $request->author,
             'book_id' => $request->book,
@@ -104,7 +160,7 @@ class EbookController extends Controller
             'quantity' => $request->quantity,
             'price' => $request->price,
             'proceeds' => $request->proceeds,
-            'royalty' => $request->proceeds / 2
+            'royalty' => $royalty 
         ]);
 
 

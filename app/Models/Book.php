@@ -11,7 +11,9 @@ class Book extends Model
 
     protected $fillable = [
         'product_id',
-        'title'
+        'title',
+        'isbn',
+        'author_id'
     ];
 
     public function pod_transcations()
@@ -22,5 +24,9 @@ class Book extends Model
     public function ebook_transcations()
     {
         return $this->hasMany(EbookTransaction::class);
+    }
+    public function author()
+    {
+        return $this->belongsTo(Author::class);
     }
 }

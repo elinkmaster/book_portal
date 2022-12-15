@@ -9,7 +9,7 @@
                     <div class="form-group my-2">
                         <select name="author_id" id="author_id" class="form-control select2 w-50">
                             <option value="all" selected>Search Author</option>
-                            @foreach ($author as $x)
+                           @foreach ($author as $x)
                                 @if (request()->get('id') == $x->id)
                                     <option value="{{ $x->id }}" selected>{{ $x->firstname}} {{ $x->lastname}}</option>
                                 @else
@@ -26,9 +26,68 @@
                         </button>
                     </div>
                 </form>
-                
+                    <div class="d-flex-right">
+                     
+                    <span>
+                    <form action="{{ route('royalty.sort') }}" method="get">
+                    <label >Sort</label>
+                  
+                        
+                        <select name="sort" value="Sort" id="sort" class="form-control">
+                          <option value="ASC">Sort By Author (ASC)</option>
+                          <option value="DESC">Sort By Author (DESC)</option>
+                          <option value="RASC">Sort By Author and Royalty (ASC)</option>
+                          <option value="RDSC">Sort By Author and Royalty (DESC)</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary">
+                           SORT
+                        </button>
+            
+                </form>
+                </span>
+                    </div>   
+                    <div class="d-flex-right" style="padding-left:525px;">
+                     
+                     <span>
+                     <form action="{{ route('royalty.sort') }}" method="get">
+                     <label >Filter By month</label>
+                     <select name="months" id="months" class="form-select">
+                                <option value="" disabled selected>Select one</option>
+                                <option value="all" >All</option>
+                               @foreach ($months as $key => $value)
+                                   
+                                   <option value="{{$key}}" selected>{{$value}}</option>
+                              
+                           @endforeach
+                            </select>
+                         
+                        
+                         <button type="submit" class="btn btn-sm btn-primary">
+                            Filter
+                         </button>
+                 </form>
+                 OR
+                 <form action="{{ route('royalty.filter') }}" method="get">
+                     <label >Filter By Year</label>
+                     <select name="years" id="years" class="form-select">
+                                <option value="" disabled selected>Select Year</option>
+                                <option value="all" >All</option>
+                               
+                                @for ($x = 2017; $x <= now()->year; $x++)
+                                    <option value="{{ $x }}">{{ $x }}</option>
+                                @endfor
+                            </select>
+                         
+                        
+                         <button type="submit" class="btn btn-sm btn-primary">
+                            Sort
+                         </button>
+             
+                 </form>
+                 </span>
+                     </div>  
                 <div class="ms-auto">
-                    
+                 
                 </div>
             </div>
             <div class="bg-light p-2 shadow rounded">
@@ -49,8 +108,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($pod_transactions as $pod_transaction)
+                    @forelse ($pod_transactions as $pod_transaction)
                             <tr>
+                             
                                 <td>{{ $pod_transaction->author->firstname }} {{ $pod_transaction->author->lastname }}</td>
                                 <td>{{ Str::title($pod_transaction->book->title) }}</td>
                                 <td>{{ $pod_transaction->year }}</td>
@@ -68,18 +128,18 @@
                                 <td>${{ $pod_transaction->price * $pod_transaction->quantity  }}</td>
                              
                              
-                                <td>${{ $pod_transaction->royalty }}</td>
-                                <td>
+                                <td>${{ number_format($pod_transaction->royalty,2)  }}</td>
+                                {{--  <td>
                                     <div class="d-flex gap-2 justify-content-center">
-                                        {{-- <a href="{{ route('pod.edit', ['pod' => $pod_transaction]) }}"
+                                        <a href="{{ route('pod.edit', ['pod' => $pod_transaction]) }}"
                                             class="btn btn-outline-warning">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
                                                 fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
                                                 <path
                                                     d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z" />
                                             </svg>
-                                        </a> --}}
-                                        <a href="{{ route('pod.delete', ['pod' => $pod_transaction]) }}"
+                                        </a> 
+                                       <a href="{{ route('pod.delete', ['pod' => $pod_transaction]) }}"
                                             onclick="return confirm('Are you sure you want to delete this file?')"
                                             class="btn btn-outline-danger">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -91,7 +151,8 @@
                                             </svg>
                                         </a>
                                     </div>
-                                </td>
+                                </td>--}} 
+                             
                             </tr>
                         @empty
                             <tr>
@@ -102,7 +163,7 @@
                 </table>
             </div>
             <div class="mt-2">
-                {{ $pod_transactions->withQueryString()->links() }}
+            {{ $pod_transactions->withQueryString()->links() }}
             </div>
         </div>
     </div>

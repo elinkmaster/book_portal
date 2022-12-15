@@ -82,13 +82,13 @@
 
                     <div class="form-group">
                         <label>Class of Trade</label>
-                        <input type="text" id="class_of_trade" cols="10" rows="3" class="form-control"
-                            value="{{ old('class_of_trade') ?? $ebook->class_of_trade }}">
+                        <input type="text"name ="class_of_trade" id="class_of_trade" cols="10" rows="3" class="form-control"
+                            value="{{$ebook->class_of_trade }}">
                     </div>
 
                     <div class="form-group">
                         <label>Line Item Number</label>
-                        <input type="text" id="line_item_no" cols="10" rows="3" class="form-control"
+                        <input type="text" name="line_item_no" id="line_item_no" cols="10" rows="3" class="form-control"
                             value="{{ old('line_item_no') ?? $ebook->line_item_no }}">
                     </div>
 

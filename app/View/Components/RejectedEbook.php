@@ -16,7 +16,7 @@ class RejectedEbook extends Component
     public $count;
     public function __construct()
     {
-        $this->count = RejectedEbookTransaction::count();
+        $this->count = RejectedEbookTransaction::where('quantity' ,'>' , 0)->count();
     }
 
     /**

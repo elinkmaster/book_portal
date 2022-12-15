@@ -10,12 +10,13 @@ class Author extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id',
+        'uid',
         'title',
         'firstname',
         'middle_initial',
         'lastname',
         'suffix',
-        'uid',
         'email',
         'contact_number',
         'address',

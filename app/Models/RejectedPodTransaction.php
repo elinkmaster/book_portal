@@ -12,6 +12,7 @@ class RejectedPodTransaction extends Model
     protected $fillable = [
         'author_name',
         'book_title',
+        'instance_id',
         'isbn',
         'market',
         'year',

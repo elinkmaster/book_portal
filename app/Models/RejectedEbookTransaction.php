@@ -12,6 +12,7 @@ class RejectedEbookTransaction extends Model
     protected $fillable = [
         'author_name',
         'book_title',
+        'instance_id',
         'year',
         'month',
         'class_of_trade',

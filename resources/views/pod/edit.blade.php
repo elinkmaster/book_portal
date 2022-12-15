@@ -129,6 +129,8 @@
                                 <small class="text-danger">{{ $message }}</small>
                             @enderror
                         </div>
+                        <input type="text" hidden name="isbn" id="isbn" class="form-control"
+                                value="{{$pod->isbn }}">
                         <div class="form-group my-1">
                             <label for="price">Price</label>
                             <input type="number" name="price" id="price" class="form-control"

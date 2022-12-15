@@ -42,17 +42,12 @@ class GeneratePdfController extends Controller
                 $pods = collect();
                 $totalPods = collect(['title' => 'Grand Total', 'quantity' =>  0, 'price' => 0, 'revenue'=> 0, 'royalty' => 0]);
                 foreach($request->book as $book){
-                    $podTransactions = PodTransaction::where('author_id', $request->author)->where('book_id', $book)
-                                            ->where('quantity','>', 0)
+                    $podTransactions = PodTransaction::orderBy('quantity','DESC')->orderBy('month','DESC')->where('author_id', $request->author)->where('book_id', $book)
                                             ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
                                             ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
-                                            ->orderByRaw('month +0 ASC' )->orderBy('isbn','ASC')->orderBy('format','ASC')->get();
+                                            ->get();
 
                     if(count($podTransactions) > 0){
-                        $gr = PodTransaction::where('author_id', $request->author)->where('book_id', $book)
-                        ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
-                        ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
-                        ->select(PodTransaction::raw('sum(price * quantity * 0.15) as total'))->first();
                         $years = [];
                         $months = [];
                         foreach($podTransactions as $key=>$pod){
@@ -80,7 +75,7 @@ class GeneratePdfController extends Controller
 
                                     $paperRoyalty = number_format($paperRev * 0.15,2) ;
                                     $paperRev  = number_format($paperRev ,2);
-                                    $pods->push(['title' => $podFirst->book->title,'refkey'=>$pod->isbn, 'year' => $year, 'month' => $month, 'format' => 'Paperback', 'quantity' => $paperBackquan, 'price' => '$'.number_format($paperHigh, 2),  'royalty' =>'$'. $paperRoyalty]);
+                                    $pods->push(['title' => $podFirst->book->title, 'year' => $year, 'month' => $month, 'format' => 'Paperback', 'quantity' => $paperBackquan, 'price' => '$'.number_format($paperHigh, 2), 'revenue'=>'$'. number_format($paperRev, 3), 'royalty' =>'$'. number_format($paperRoyal,3)]);
 
                                     /* Get all  Laminated  Transactions */
                                     $hardBound = $podTransactions->where('year', $year)->where('month', $month)->where('format', '!=', 'Perfectbound');
@@ -96,51 +91,55 @@ class GeneratePdfController extends Controller
                                     }
 
                                     $hardRoyalty = number_format($hardbackRev * 0.15 ,2);
-                                
-                                    $pods->push(['title' => $podFirst->book->title,'refkey'=>$pod->isbn, 'year' => $year, 'month' => $month, 'format' => 'Hardback', 'quantity' =>  $hardBackQuan, 'price' =>'$'. number_format($hardHigh, 2) , 'royalty' =>'$'. number_format($hardRoyalty,2)]);
+                                    $hardbackRev  = number_format($hardbackRev ,2);
+                                    $pods->push(['title' => $podFirst->book->title, 'year' => $year, 'month' => $month, 'format' => 'Hardback', 'quantity' =>  $hardBackQuan, 'price' =>'$'. number_format($hardHigh, 2) ,'revenue'=> '$'.number_format($hardbackRev, 2), 'royalty' =>'$'. number_format($hardRoyalty,3)]);
                                     
                                 }   
                             }
                         }
-                        $countAllTransaction = number_format($podTransactions->sum('royalty'),2);
-                        if($podTransactions->sum('quantity')){
-
+                        $allCopies = $podTransactions->sum('quantity');
+                       
+                        if($allCopies > 1){
+                            $royalties = number_format($podTransactions->sum('royalty'),2);
+                           
+                        }
+                        else{
+                            $royalties = number_format($paperRoyal, 2) ?? number_format($hardRoyal, 2);
                         }
                         $pods->push([
                             'books' => $podTransactions[0]->book->id ,
                             'title' => $podTransactions[0]->book->title . " Total",
-                            'quantity' => $podTransactions->sum('quantity'),
-                           
+                            'quantity' =>$allCopies,
+                            'revenue' => number_format($paperRev + $hardbackRev, 2),
                             
-                            'royalty' => $gr->total,
+                            'royalty' =>$royalties,
                             'price' => (($paperHigh > $hardHigh) ? number_format($paperHigh, 2) : number_format($hardHigh, 2))
                         ]);
                     }
                 
-
+                    
                 $grand_quantity = 0;
-                $grand_royalty = 0.00;
+                $grand_royalty = 0;
                 $grand_price = 0;
                 $grand_revenue = 0;
                 foreach($pods as $pod){
                     if(UtilityHelper::hasTotalString($pod)){
                         $grand_quantity += $pod['quantity'];
                         if($grand_quantity > 1){
-                            $grand_royalty += $pod['royalty'];
-                           
+                            $grand_royalty += floor($pod['royalty']*100)/ 100  ;
                         }else{
-                            $grand_royalty += $pod['royalty'];
-                        } 
-               
+                            $grand_royalty += $pod['royalty'] ;
+                        }
+                      
+                        $grand_revenue += $pod['revenue'];
                     }
                     if($pod['price'] > $grand_price) { $grand_price = $pod['price']; }
                 }
                 $totalPods['quantity'] = $grand_quantity;
-                $totalPods['price'] = $grand_price;
+                $totalPods['price'] = number_format($grand_price, 2);
                 $totalPods['revenue'] = number_format($grand_revenue, 2);
-                $totalPods['royalty'] = number_format($grand_royalty,2);
+                 $totalPods['royalty'] = number_format($grand_royalty,2);      
             }
-              
 
                 $ebooks = collect();
                 $totalEbooks = collect(['title' => 'Grand Total' , 'quantity' => 0, 'revenue' => 0, 'royalty' => 0]);
@@ -153,10 +152,6 @@ class GeneratePdfController extends Controller
                                                 ->get();
         
                     if(count($ebookTransactions) > 0){
-                        $eprev = EbookTransaction::where('author_id', $request->author)->where('book_id', $book)
-                        ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
-                        ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
-                        ->select(EbookTransaction::raw('sum(proceeds /2) as total'))->first();
                         $years = [];
                         $months = [];
                         foreach($ebookTransactions as $ebook)
@@ -174,45 +169,11 @@ class GeneratePdfController extends Controller
                             foreach($months as $month){
                                 $ebook = $ebookTransactions->where('year', $year)->where('month', $month)->first();
                                 if($ebook){
-                                                                       /* Get all WHOLESALE */
-                                                                       $wholesale = $ebookTransactions->where('year', $year)->where('month', $month)->where('class_of_trade', 'WHOLESALE');
-                                                                       $wquan = 0;
-                                                                       $wrev = 0;
-                                                                       $whigh = 0;
-                                                                       $wroyal = 0;
-                                                                       $wproc = 0;
-                                                                       foreach ($wholesale as $webook){
-                                                                         $wproc  += $webook->proceeds;
-                                                                           $wquan += $webook->quantity;
-                                                                           $wrev += $webook->price * $webook->quantity;
-                                                                           if($webook->price > $whigh) { $whigh = $webook->price; }
-                                                                           if ($webook->royalty > $wroyal) { $wroyal = $webook->royalty;}
-                                                                       }
-                                                                       
-                                                                       $wroyal = number_format($wproc /2 ,2) ;
-                                                                       $wrev  = number_format($wrev ,2);
-                                                                       $ebooks->push(['title' => $ebook->book->title, 'year' => $year, 'trade'=>$ebook->class_of_trade, 'month' => $month,'quantity' => $wquan, 'price' => $ebook->price, 'revenue' => $wrev, 'royalty' => $wroyal]);
-                                   
-                                                                       /* Get all  AGENCY  Transactions */
-                                 
-                                                                          
-                                                                       $agency = $ebookTransactions->where('year', $year)->where('month', $month)->where('class_of_trade','!=' ,'WHOLESALE');
-                                                                       $aquan = 0;
-                                                                       $arev = 0;
-                                                                       $ahigh = 0;
-                                                                       $aroyal = 0;
-                                                                       $aproc = 0;
-                                                                       foreach ($agency as $aebook){
-                                                                         $aproc  += $aebook->proceeds;
-                                                                           $aquan += $aebook->quantity;
-                                                                           $arev += $aebook->price * $aebook->quantity;
-                                                                           if($aebook->price > $ahigh) { $whigh = $aebook->price; }
-                                                                           if ($aebook->royalty > $aroyal) { $aroyal = $aebook->royalty;}
-                                                                       }
-                                   
-                                                                       $aroyal = number_format($aproc / 2 ,2) ;
-                                                                       $arev  = number_format($arev ,2);
-                                                                       $ebooks->push(['title' => $ebook->book->title, 'year' => $year, 'trade'=>$ebook->class_of_trade, 'month' => $month,'quantity' => $aquan, 'price' => $ebook->price, 'revenue' => $arev, 'royalty' => $aroyal]);
+                                    $quantity = $ebookTransactions->where('year', $year)->where('month', $month)->sum('quantity');
+                                    $revenue = number_format($ebook->price * $quantity ,2);
+                                    $royalty = number_format((float)$ebookTransactions->where('year', $year)->where('month', $month)->sum('royalty'), 2);
+                                    
+                                    $ebooks->push(['title' => $ebook->book->title, 'year' => $year, 'trade'=>$ebook->class_of_trade, 'month' => $month,'quantity' => $quantity, 'price' => $ebook->price, 'revenue' => $revenue, 'royalty' => $royalty]);
                                 }
                             }
                         }
@@ -222,36 +183,29 @@ class GeneratePdfController extends Controller
                             'title' => $ebookTransactions[0]->book->title . " Total",
                             'quantity' => $ebookTransactions->sum('quantity'),
                            
-                            'royalty' => $eprev->total,
+                            'royalty' => number_format((float)$ebookTransactions->sum('royalty'), 2),
                             'price' => $ebookTransactions[0]->price,
-                           
+                            'revenue' => number_format( $ebookTransactions->sum('quantity') * $ebookTransactions[0]->price ,2)
                         ]);
                     }
                 }
-                $grande_quantity = 0;
-                $grande_royalty = 0.00;
-                $grande_price = 0;
-                $grande_revenue = 0;
+        
                 foreach($ebooks as $ebook){
                     if(UtilityHelper::hasTotalString($ebook)){
-                        $grande_quantity += $ebook['quantity'];
-                        if($grande_quantity > 1){
-                            $grande_royalty += $ebook['royalty'];
-                           
-                        }else{
-                            $grande_royalty += $ebook['royalty'];
-                        } 
-                        if($ebook['price'] > $grande_price) { $grande_price = $ebook['price']; }
+                        if(UtilityHelper::hasTotalString($ebook)){
+                            $totalEbooks->put('quantity',$totalEbooks['quantity'] + $ebook['quantity']);
+                            $totalEbooks->put('royalty', $totalEbooks['royalty'] + $ebook['royalty']);
+                            $totalEbooks->put('revenue', $totalEbooks['revenue'] + $ebook['revenue']);
+                            $totalEbooks->put('price',  $ebook['price']);
+                        }
+                    
                     }
-                $totalEbooks['quantity'] = $grande_quantity;
-                $totalEbooks['price'] = $grande_price;
-                $totalEbooks['revenue'] = number_format($grande_revenue, 3);
-                $totalEbooks['royalty'] = number_format($grande_royalty,2);
-               
                 }
         
-               // $totalRoyalties = number_format($totalPods['royalty'] + $totalEbooks['royalty'],2);
+                $totalRoyalties = number_format($totalPods['royalty'] + $totalEbooks['royalty'],2);
+                $numberFormatter = NumberFormatterHelper::numtowords($totalRoyalties);
                 $currentDate = Carbon::now()->format(' m/d/Y g:i A');
+        
                 $imageUrl = asset('images/header.png');
           //print pdf
                 $pdf = PDF::loadView('report.pdf',[
@@ -260,11 +214,12 @@ class GeneratePdfController extends Controller
                     'author' => $author,
                     'totalPods' => $totalPods,
                     'totalEbooks' => $totalEbooks,
+                    'totalRoyalties' => $totalRoyalties,
                     'fromYear' => $request->fromYear,
                     'fromMonth' => $request->fromMonth,
                     'toYear' => $request->toYear,
                     'toMonth' => $request->toMonth,
-                    //'allRoyal' =>$totalRoyalties,
+                    'numberFormatter' => $numberFormatter,
                     'currentDate' => $currentDate,
                     'imageUrl' => $imageUrl,
                 ]);
@@ -286,21 +241,12 @@ class GeneratePdfController extends Controller
                 $pods = collect();
                 $totalPods = collect(['title' => 'Grand Total', 'quantity' =>  0, 'price' => 0, 'revenue'=> 0, 'royalty' => 0]);
                 foreach($request->book as $book){
-                    $podTransactions = PodTransaction::where('author_id', $request->author)->where('book_id', $book)
-                                            ->where('quantity','>', 0)
-                                            ->where('price','>', 0)
+                    $podTransactions = PodTransaction::orderBy('quantity','DESC')->orderBy('month','DESC')->where('author_id', $request->author)->where('book_id', $book)
                                             ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
                                             ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
-                                            ->orderByRaw('month +0 DESC' )->orderByRaw('year +0 DESC' )->orderBy('isbn','DESC')->orderBy('format','DESC')->get();
+                                            ->get();
 
                     if(count($podTransactions) > 0){
-                       
-                        $gr = PodTransaction::where('author_id', $request->author)->where('book_id', $book)
-                                            ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
-                                            ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
-                                            ->select(PodTransaction::raw('sum(price * quantity * 0.15) as total'))->first();
-                      
-                      
                         $years = [];
                         $months = [];
                         foreach($podTransactions as $key=>$pod){
@@ -310,7 +256,7 @@ class GeneratePdfController extends Controller
 
                         foreach($years as $year){
                             foreach($months as $month){
-                                $podFirst = $podTransactions->where('quantity','>', 0)->where('year', $year)->where('month', $month);
+                                $podFirst = $podTransactions->where('year', $year)->where('month', $month)->first();
 
                                 if($podFirst){
                                     /* Get all PaperBack PodTransaction */
@@ -326,9 +272,9 @@ class GeneratePdfController extends Controller
                                         if ($pod->royalty > $paperRoyal) { $paperRoyal = $pod->royalty;}
                                     }
 
-                                    $paperRoyalty = number_format($paperRev * 0.15,3) ;
+                                    $paperRoyalty = number_format($paperRev * 0.15,2) ;
                                     $paperRev  = number_format($paperRev ,2);
-                                    $pods->push(['title' => $podTransactions[0]->book->title,'refkey'=>$pod->isbn, 'year' => $year, 'month' => $month, 'format' => 'Paperback', 'quantity' => $paperBackquan, 'price' => '$'.number_format($paperHigh, 2),  'royalty' =>'$'. $paperRoyalty]);
+                                    $pods->push(['title' => $podFirst->book->title, 'year' => $year, 'month' => $month, 'format' => 'Paperback', 'quantity' => $paperBackquan, 'price' => '$'.number_format($paperHigh, 2), 'revenue'=>'$'. number_format($paperRev, 3), 'royalty' =>'$'. number_format($paperRoyal,3)]);
 
                                     /* Get all  Laminated  Transactions */
                                     $hardBound = $podTransactions->where('year', $year)->where('month', $month)->where('format', '!=', 'Perfectbound');
@@ -344,51 +290,55 @@ class GeneratePdfController extends Controller
                                     }
 
                                     $hardRoyalty = number_format($hardbackRev * 0.15 ,2);
-                                
-                                    $pods->push(['title' => $podTransactions[0]->book->title,'refkey'=>$pod->isbn, 'year' => $year, 'month' => $month, 'format' => 'Hardback', 'quantity' =>  $hardBackQuan, 'price' =>'$'. number_format($hardHigh, 2) , 'royalty' =>'$'. number_format($hardRoyalty,3)]);
+                                    $hardbackRev  = number_format($hardbackRev ,2);
+                                    $pods->push(['title' => $podFirst->book->title, 'year' => $year, 'month' => $month, 'format' => 'Hardback', 'quantity' =>  $hardBackQuan, 'price' =>'$'. number_format($hardHigh, 2) ,'revenue'=> '$'.number_format($hardbackRev, 2), 'royalty' =>'$'. number_format($hardRoyalty,3)]);
                                     
                                 }   
                             }
                         }
-                        $countAllTransaction = number_format($podTransactions->sum('royalty'),2);
-                        if($podTransactions->sum('quantity')){
-
+                        $allCopies = $podTransactions->sum('quantity');
+                       
+                        if($allCopies > 1){
+                            $royalties = number_format($podTransactions->sum('royalty'),2);
+                           
+                        }
+                        else{
+                            $royalties = number_format($paperRoyal, 2) ?? number_format($hardRoyal, 2);
                         }
                         $pods->push([
                             'books' => $podTransactions[0]->book->id ,
-                            'title' => $podTransactions[0]->book->title . " Total (Royalty):",
-                            'quantity' => $podTransactions->sum('quantity'),
-                           
+                            'title' => $podTransactions[0]->book->title . " Total",
+                            'quantity' =>$allCopies,
+                            'revenue' => number_format($paperRev + $hardbackRev, 2),
                             
-                            'royalty' => $gr->total,
+                            'royalty' =>$royalties,
                             'price' => (($paperHigh > $hardHigh) ? number_format($paperHigh, 2) : number_format($hardHigh, 2))
                         ]);
                     }
                 
-
+                    
                 $grand_quantity = 0;
-                $grand_royalty = 0.00;
+                $grand_royalty = 0;
                 $grand_price = 0;
                 $grand_revenue = 0;
                 foreach($pods as $pod){
                     if(UtilityHelper::hasTotalString($pod)){
                         $grand_quantity += $pod['quantity'];
                         if($grand_quantity > 1){
-                            $grand_royalty += $pod['royalty'];
-                           
+                            $grand_royalty += floor($pod['royalty']*100)/ 100  ;
                         }else{
-                            $grand_royalty += $pod['royalty'];
-                        } 
-               
+                            $grand_royalty += $pod['royalty'] ;
+                        }
+                      
+                        $grand_revenue += $pod['revenue'];
                     }
                     if($pod['price'] > $grand_price) { $grand_price = $pod['price']; }
                 }
                 $totalPods['quantity'] = $grand_quantity;
-                $totalPods['price'] = $grand_price;
-                $totalPods['revenue'] = number_format($grand_revenue, 3);
-                $totalPods['royalty'] = number_format($grand_royalty,2);
+                $totalPods['price'] = number_format($grand_price, 2);
+                $totalPods['revenue'] = number_format($grand_revenue, 2);
+                 $totalPods['royalty'] = number_format($grand_royalty,2);      
             }
-              
                 
              
 
@@ -400,14 +350,9 @@ class GeneratePdfController extends Controller
                                                 ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
                                                 ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
                                                 ->where('royalty', '<>', 0)
-                                                ->orderByRaw('month +0 ASC' )
                                                 ->get();
         
                     if(count($ebookTransactions) > 0){
-                        $eprev = EbookTransaction::where('author_id', $request->author)->where('book_id', $book)
-                        ->where('year', '>=', $request->fromYear)->where('year','<=', $request->toYear)
-                        ->where('month', '>=', (int) $request->fromMonth )->where('month', '<=', (int) $request->toMonth)
-                        ->select(EbookTransaction::raw('sum(proceeds /2) as total'))->first();
                         $years = [];
                         $months = [];
                         foreach($ebookTransactions as $ebook)
@@ -419,96 +364,44 @@ class GeneratePdfController extends Controller
                                 array_push($months, $ebook->month);
                             }
                         }
+        
                         foreach($years as $year)
                         {
                             foreach($months as $month){
                                 $ebook = $ebookTransactions->where('year', $year)->where('month', $month)->first();
                                 if($ebook){
-                                      /* Get all WHOLESALE */
-                                      $wholesale = $ebookTransactions->where('year', $year)->where('month', $month)->where('class_of_trade', 'WHOLESALE');
-                                      $wquan = 0;
-                                      $wrev = 0;
-                                      $whigh = 0;
-                                      $wroyal = 0;
-                                      $wproc = 0;
-                                      foreach ($wholesale as $webook){
-                                        $wproc  += $webook->proceeds;
-                                          $wquan += $webook->quantity;
-                                          $wrev += $webook->price * $webook->quantity;
-                                          if($webook->price > $whigh) { $whigh = $webook->price; }
-                                          if ($webook->royalty > $wroyal) { $wroyal = $webook->royalty;}
-                                      }
-                                      
-                                      $wroyal = number_format($wproc /2 ,2) ;
-                                      $wrev  = number_format($wrev ,2);
-                                      $ebooks->push(['title' => $ebook->book->title, 'year' => $year, 'trade'=>$ebook->class_of_trade, 'month' => $month,'quantity' => $wquan, 'price' => $ebook->price, 'revenue' => $wrev, 'royalty' => $wroyal]);
-  
-                                      /* Get all  AGENCY  Transactions */
-
-                                         
-                                      $agency = $ebookTransactions->where('year', $year)->where('month', $month)->where('class_of_trade','!=' ,'WHOLESALE');
-                                      $aquan = 0;
-                                      $arev = 0;
-                                      $ahigh = 0;
-                                      $aroyal = 0;
-                                      $aproc = 0;
-                                      foreach ($agency as $aebook){
-                                        $aproc  += $aebook->proceeds;
-                                          $aquan += $aebook->quantity;
-                                          $arev += $aebook->price * $aebook->quantity;
-                                          if($aebook->price > $ahigh) { $ahigh = $aebook->price; }
-                                          if ($aebook->royalty > $aroyal) { $aroyal = $aebook->royalty;}
-                                      }
-  
-                                      $aroyal = number_format($aproc / 2 ,2) ;
-                                      $arev  = number_format($arev ,2);
-                                      $ebooks->push(['title' => $ebook->book->title, 'year' => $year, 'trade'=>$ebook->class_of_trade, 'month' => $month,'quantity' => $aquan, 'price' => $ebook->price, 'revenue' => $arev, 'royalty' => $aroyal]);
-
-
-
-                                   
-                                      }
-  
-                                  
-                               
+                                    $quantity = $ebookTransactions->where('year', $year)->where('month', $month)->sum('quantity');
+                                    $revenue = number_format($ebook->price * $quantity ,2);
+                                    $royalty = number_format((float)$ebookTransactions->where('year', $year)->where('month', $month)->sum('royalty'), 2);
+                                    
+                                    $ebooks->push(['title' => $ebook->book->title, 'year' => $year, 'trade'=>$ebook->class_of_trade, 'month' => $month,'quantity' => $quantity, 'price' => $ebook->price, 'revenue' => $revenue, 'royalty' => $royalty]);
+                                }
                             }
                         }
         
                         $ebooks->push([
                             'books' => $ebookTransactions[0]->book->id ,
-                            'title' => $ebookTransactions[0]->book->title . " Total (Royalty):",
+                            'title' => $ebookTransactions[0]->book->title . " Total",
                             'quantity' => $ebookTransactions->sum('quantity'),
                            
-                            'royalty' =>  $eprev->total,
+                            'royalty' => number_format((float)$ebookTransactions->sum('royalty'), 2),
                             'price' => $ebookTransactions[0]->price,
-                            
+                            'revenue' => number_format( $ebookTransactions->sum('quantity') * $ebookTransactions[0]->price ,2)
                         ]);
                     }
                 }
-                $grande_quantity = 0;
-                $grande_royalty = 0.00;
-                $grande_price = 0;
-                $grande_revenue = 0;
+        
                 foreach($ebooks as $ebook){
                     if(UtilityHelper::hasTotalString($ebook)){
-                        $grande_quantity += $ebook['quantity'];
-                        if($grande_quantity > 1){
-                            $grande_royalty += $ebook['royalty'];
-                           
-                        }else{
-                            $grande_royalty += $ebook['royalty'];
-                        } 
-                        if($ebook['price'] > $grande_price) { $grande_price = $ebook['price']; }
+                        $totalEbooks->put('quantity',$totalEbooks['quantity'] + $ebook['quantity']);
+                        $totalEbooks->put('royalty', $totalEbooks['royalty'] + $ebook['royalty']);
+                        $totalEbooks->put('revenue', $totalEbooks['revenue'] + $ebook['revenue']);
+                        $totalEbooks->put('price',  $ebook['price']);
                     }
-                $totalEbooks['quantity'] = $grande_quantity;
-                $totalEbooks['price'] = $grande_price;
-                $totalEbooks['revenue'] = number_format($grande_revenue, 3);
-                $totalEbooks['royalty'] = $grande_royalty;
-                  
                 }
         
                 $totalRoyalties = number_format((float) $totalPods['royalty'] + $totalEbooks['royalty'], 3);
-              //  $numberFormatter = NumberFormatterHelper::numtowords($totalRoyalties);
+                $numberFormatter = NumberFormatterHelper::numtowords($totalRoyalties);
                 $currentDate = Carbon::now();
                 // preview data 
                 return view('prev',[
@@ -524,6 +417,7 @@ class GeneratePdfController extends Controller
                     'fromMonth' => $request->fromMonth,
                     'toYear' => $request->toYear,
                     'toMonth' => $request->toMonth,
+                    'numberFormatter' => $numberFormatter,
                     'currentDate' => $currentDate,
                    
                 ]);

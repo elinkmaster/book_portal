@@ -18,8 +18,8 @@ class RejectedTransaction extends Component
 
     public function __construct()
     {
-        $rejectedpods = RejectedPodTransaction::count();
-        $rejectedebooks = RejectedEbookTransaction::count();
+        $rejectedpods = RejectedPodTransaction::where('quantity' ,'>' , 0)->count();
+        $rejectedebooks = RejectedEbookTransaction::where('quantity' ,'>' , 0)->count();
         $this->count = $rejectedpods + $rejectedebooks;
     }
 

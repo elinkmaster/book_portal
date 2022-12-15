@@ -3,6 +3,36 @@
 @section('content')
     <div class="container ">
         <div class="p-3 my-3 w-100 ">
+        <form action="" method="get">
+
+<div class="d-flex gap-2" style="width: 30%">
+    <label for="filter">Search for Books</label>
+    <input type="text" name="filter" id="filter" class="form-control">
+
+
+</div>
+<div class ="d-flex-gap-2" style="width:20%">
+<label for="month">Filter by Month</label>
+        <select name="month" id="month" class="form-select">
+        <option value="all">Show all</option>
+            @foreach ($months as $key => $value)
+                <option value="{{ $key }}">{{ $value }}</option>
+            @endforeach
+        </select>
+    </div>
+    <button type="submit" class="btn btn-outline-primary">Search</button>
+</form>
+<form action="{{ route('all-rejecteds-ebooks.filteryear') }}" method="get">
+            <label for="year">or Filter by Year</label>
+                       
+                       <select name="years" class="form-control select2 w-25">
+                               <option value="all" selected>Show All</option>
+                               @for ($x = 2017; $x <= now()->year; $x++)
+                               <option value="{{ $x }}">{{ $x }}</option>
+                               @endfor
+                           </select>
+            <button type="submit" class="btn btn-outline-primary">Filter</button>             
+            </form>
         <a href="{{ route('all-rejecteds-ebooks.clear') }}"
                                             onclick="return confirm('Are you sure you want to Clear file?')"
                                             class="btn btn-danger"> Clear All</a>
@@ -66,7 +96,7 @@
                 </table>
             </div>
             <div class="mt-2">
-                {{ $rejected_ebooks->links() }}
+                {{ $rejected_ebooks->withQueryString()->links() }}
             </div>
         </div>
     </div>

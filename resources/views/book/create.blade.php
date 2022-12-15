@@ -23,9 +23,9 @@
                     @endif
                     @csrf
                     <div class="form-group my-1">
-                        <label for="product_id">Product ID</label>
-                        <input min="0" type="number" name="product_id" id="product_id" class="form-control" placeholder="xxxx" value="{{old('product_id')}}">
-                        @error('product_id')
+                        <label for="isbn">Isbn</label>
+                        <input min="0" type="text" name=isbn id="isbn" class="form-control" placeholder="xxxxxxxx" value="{{old('product_id')}}">
+                        @error('isbn')
                             <small class="text-danger">{{$message}}</small>
                         @enderror
                     </div>
@@ -36,6 +36,16 @@
                             <small class="text-danger">{{$message}}</small>
                         @enderror
                     </div>
+                        <div class="form-group">
+                        <label for="author">Author</label>
+                        <select name="author" class="select2 form-control" id="author">
+                            <option value="" disabled selected>Please select one</option>
+                            @foreach ($authors as $author)
+                                <option value="{{ $author->id }}">{{ $author->getFullName() }}</option>
+                            @endforeach
+                        </select>
+                        
+                    </div>
 
                     <div class="form-group my-1">
                         <button type="submit" class="btn btn-primary">Add Book</button>
@@ -45,5 +55,17 @@
         </div>
     </div>
 </div>
-
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/css/datepicker.min.css"
+        rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="https://netdna.bootstrapcdn.com/bootstrap/2.3.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.2.0/js/bootstrap-datepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+     
+    // In your Javascript (external .js resource or <script> tag)
+        $(document).ready(function() {
+            $('.select2').select2();
+        });
+</script>
 @endsection

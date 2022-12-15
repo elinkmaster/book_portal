@@ -12,6 +12,7 @@ class PodTransaction extends Model
     protected $fillable = [
         'author_id',
         'book_id',
+        'instance_id',
         'isbn',
         'market',
         'year',
